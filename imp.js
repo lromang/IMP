@@ -1,4 +1,4 @@
-// <reference path="default.html" />
+/// <reference path="default.html" />
 /// <reference path="default.html" />
 //  JavaScript source code
 
@@ -33,7 +33,7 @@ function interpretExpr(e, state) {
   case FALSE:
     return false;
   case VR:
-    return interpretExpr(e.name).val;
+    return eval('state.' + e.name);
   case PLUS:
     return interpretExpr(e.left, state) + interpretExpr(e.right, state);
   case TIMES:
@@ -57,13 +57,13 @@ function interpretStmt(c, state) {
     var sigmaP  = interpretStmt(c.snd, sigmaPP);
     return sigmaP;
   case IFTE:
-    if(interpretExpr(c.cond)){
+    if(interpretExpr(c.cond, state)){
       return interpretStmt(c.tcase, state);
     }else{
       return interpretStmt(c.fcase, state);
     }
   case WHLE:
-    var sigma  = interpretExpr(c.cond, state);
+    var sigma     = interpretExpr(c.cond, state);
     if(sigma){
       var sigmaP  = interpretStmt(c.body, state);
       var sigmaPP = interpretStmt(c, sigmaP);
@@ -71,7 +71,7 @@ function interpretStmt(c, state) {
     }
     return state;
   case ASSGN:
-    var sigmaP =  interpretStmt(c.val, state);
+    eval("state." + c.vr + "=" + interpretExpr(c.val, state));
     return state;
   case SKIP:
     return state;
@@ -96,18 +96,23 @@ function flse() {
 function vr(name) {
     return { type: VR, name: name, toString: function () { return this.name; } };
 }
+
 function num(n) {
     return { type: NUM, val: n, toString: function () { return this.val; } };
 }
+
 function plus(x, y) {
     return { type: PLUS, left: x, right: y, toString: function () { return "(" + this.left.toString() + "+" + this.right.toString() + ")"; } };
 }
+
 function times(x, y) {
     return { type: TIMES, left: x, right: y, toString: function () { return "(" + this.left.toString() + "*" + this.right.toString() + ")"; } };
 }
+
 function lt(x, y) {
     return { type: LT, left: x, right: y, toString: function () { return "(" + this.left.toString() + "<" + this.right.toString() + ")"; } };
 }
+
 function and(x, y) {
     return { type: AND, left: x, right: y, toString: function () { return "(" + this.left.toString() + "&&" + this.right.toString() + ")"; } };
 }
@@ -115,7 +120,6 @@ function and(x, y) {
 function not(x) {
     return { type: NOT, left: x, toString: function () { return "(!" + this.left.toString() + ")"; } };
 }
-
 
 function seq(s1, s2) {
     return { type: SEQ, fst: s1, snd: s2, toString: function () { return "" + this.fst.toString() + ";\n" + this.snd.toString(); } };
@@ -173,18 +177,22 @@ function computeVC(prog) {
 }
 
 function interp() {
-    var prog = eval(document.getElementById("p2input").value);
-    var state = JSON.parse(document.getElementById("State").value);
-    clearConsole();
-    writeToConsole("Just pretty printing for now");
-    writeToConsole(prog.toString());
+  var prog     = eval(document.getElementById("p2input").value);
+  var state    = JSON.parse(document.getElementById("State").value);
+  var currLine = prog.toString();
+  clearConsole();
+  writeToConsole("Just pretty printing for now");
+  writeToConsole(currLine);
+  interpretStmt(prog, state);
+  writeToConsole("\nESTADO:\n");
+  writeToConsole(JSON.stringify(state));
 }
 
 function genVC() {
-    var prog = eval(document.getElementById("p2input").value);
-    clearConsole();
-    writeToConsole("Just pretty printing for now");
-    writeToConsole(prog.toString());
+  var prog = eval(document.getElementById("p2input").value);
+  clearConsole();
+  writeToConsole("Just pretty printing for now");
+  writeToConsole(prog.toString());
 }
 
 function writeToConsole(text) {
