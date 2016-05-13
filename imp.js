@@ -1,10 +1,7 @@
-/// <reference path="default.html" />
-/// <reference path="default.html" />
-//  JavaScript source code
-
-////////////////
-// Problem 2
-///////////////
+// --------------------------------
+// Luis Manuel Román García
+// Andreu Andoni Boada Atela
+// --------------------------------
 
 // Expresions
 var NUM   = "NUM";
@@ -16,7 +13,7 @@ var LT    = "LT";
 var AND   = "AND";
 var NOT   = "NOT";
 
-// Statements
+// Statementsnnn
 var SEQ    = "SEQ";
 var IFTE   = "IFSTMT";
 var WHLE   = "WHILESTMT";
@@ -24,6 +21,65 @@ var ASSGN  = "ASSGN";
 var SKIP   = "SKIP";
 var ASSUME = "ASSUME";
 var ASSERT = "ASSERT";
+
+// substitute
+function substitute(e, varName, newExp){
+  switch( e.type ){
+  case VR:
+    if(e.name === varName){
+      return newExp;
+    }else{
+      return e;
+    }
+  case NUM:
+    return e;
+  case FALSE:
+    return flse();
+  case PLUS:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return plus(left, right);
+  case TIMES:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return time(left, right);
+  case LT:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return lt(left, right);
+  case AND:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return and(left, right);
+  case NOT:
+    var left = substitute(e.left, varName, newExp);
+    return not(left);
+  default:
+    return e;
+  }
+}
+
+// WPC
+function wpc(cmd, predQ){
+  switch(cmd.type){
+  case SKIP:
+    return predQ;
+  case ASSERT:
+    return and(cmd.exp, predQ);
+  case ASSUME:
+    return not(and(cmd.exp, not(predQ)));
+  case SEQ:
+    return wpc(cmd.fst, wpc(cmd.snd, predQ));
+  case ASSGN:
+    return substitute(predQ, cmd.vr, cmd.val);
+  case IFTE:
+    return and(not(and(cmd.cond, wpc(cmd.tcase, predQ))),
+               not(and(not(cmd.cond), wpc(cmd.fcase, predQ))));
+  default:
+      return predQ;
+  }
+}
+
 
 // Interpret expressions
 function interpretExpr(e, state) {
@@ -170,10 +226,10 @@ function block(slist) {
     }
 }
 
-//The stuff you have to implement.
-
 function computeVC(prog) {
-    //Compute the verification condition for the program leaving some kind of place holder for loop invariants.
+  switch (prog){
+  case a:
+  }
 }
 
 function interp() {
