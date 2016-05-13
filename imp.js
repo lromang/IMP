@@ -3,6 +3,9 @@
 // Andreu Andoni Boada Atela
 // --------------------------------
 
+// Environment variables
+var x = [];
+
 // Expresions
 var NUM   = "NUM";
 var FALSE = "FALSE";
@@ -22,7 +25,7 @@ var SKIP   = "SKIP";
 var ASSUME = "ASSUME";
 var ASSERT = "ASSERT";
 
-// substitute
+// Substitute
 function substitute(e, varName, newExp){
   switch( e.type ){
   case VR:
@@ -80,6 +83,82 @@ function wpc(cmd, predQ){
   }
 }
 
+// Get_vars
+function get_vars(prog){
+  switch(prog.type){
+  case SEQ:
+    return x.push(get_vars(prog.fst),
+                  get_vars(prog.snd));
+  case VR:
+    return x.push(prog.name);
+  case PLUS:
+    return x.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case TIMES:
+    return x.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case LT:
+    return x.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case AND:
+    return x.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case NOT:
+    return x.push(get_vars(prog.left));
+  default:
+    return x.push();
+  }
+}
+
+// ComputeVC
+function computeVC(prog) {
+  var predQ = tru();
+  switch (prog.type){
+  case ASSERT:
+    predQ = prog.exp;
+    return wpc(prog, predQ);
+  case IFTE:
+    return wpc(prog, predQ);
+  case SKIP:
+    return wpc(prog, predQ);
+  case ASSUME:
+    return wpc(prog, predQ);
+  case SEQ:
+    return wpc(prog, predQ);
+  case ASSGN:
+    return wpc(prog, predQ);
+  case WHLE:
+    var b = prog.body;
+    var c = prog.cond;
+    var i = prog.inv;
+    var names = get_vars(i);
+    //
+    //
+    if(b.type == WHLE){
+      var x          = and(not(and(c, not(computeVC(b, i)))),
+                           not(and(not(c), not(predQ))));
+      var whl_cond   = not(and(i, not(x)));
+      var aux_length = x.length();
+      var aux_name   = x.pop();
+      y              = substitute(whl_cond,
+                                  aux_name,
+                                  aux_name + '_');
+      for(var i = 0; i < aux_length; i++){
+        aux_name = x.pop();
+        y        = substitute(y,
+                              aux_name,
+                              aux_name + '_');
+      }
+      return and(i, y);
+    }
+    var x        = and(not(and(c, not(wpc(b, i)))),
+                       not(and(not(c), not(predQ))));
+    var whl_cond = not(and(i, not(x)));
+    return and(i, substitute(whl_cond));
+  default:
+    return prog;
+  }
+}
 
 // Interpret expressions
 function interpretExpr(e, state) {
@@ -158,23 +237,23 @@ function num(n) {
 }
 
 function plus(x, y) {
-    return { type: PLUS, left: x, right: y, toString: function () { return "(" + this.left.toString() + "+" + this.right.toString() + ")"; } };
+    return { type: PLUS, left: x, right: y, toString: function () { return "("  + "+" + " " +  this.left.toString() + " " + this.right.toString() + ")"; } };
 }
 
 function times(x, y) {
-    return { type: TIMES, left: x, right: y, toString: function () { return "(" + this.left.toString() + "*" + this.right.toString() + ")"; } };
+    return { type: TIMES, left: x, right: y, toString: function () { return "("  + "*" + this.left.toString() + this.right.toString() + ")"; } };
 }
 
 function lt(x, y) {
-    return { type: LT, left: x, right: y, toString: function () { return "(" + this.left.toString() + "<" + this.right.toString() + ")"; } };
+    return { type: LT, left: x, right: y, toString: function () { return "("  + "<" + this.left.toString() + this.right.toString() + ")"; } };
 }
 
 function and(x, y) {
-    return { type: AND, left: x, right: y, toString: function () { return "(" + this.left.toString() + "&&" + this.right.toString() + ")"; } };
+    return { type: AND, left: x, right: y, toString: function () { return "(" +  "and" + this.left.toString() + this.right.toString() + ")"; } };
 }
 
 function not(x) {
-    return { type: NOT, left: x, toString: function () { return "(!" + this.left.toString() + ")"; } };
+    return { type: NOT, left: x, toString: function () { return "(not" + this.left.toString() + ")"; } };
 }
 
 function seq(s1, s2) {
@@ -197,8 +276,8 @@ function ifte(c, t, f) {
     return { type: IFTE, cond: c, tcase: t, fcase: f, toString: function () { return "if(" + this.cond.toString() + "){\n" + this.tcase.toString() + '\n}else{\n' + this.fcase.toString() + '\n}'; } };
 }
 
-function whle(c, b) {
-    return { type: WHLE, cond: c, body: b, toString: function () { return "while(" + this.cond.toString() + "){\n" + this.body.toString() + '\n}'; } };
+function whle(c, b, i) {
+  return { type: WHLE, cond: c, body: b, inv: i, toString: function () { return "while(" + this.cond.toString() + "){\n" + this.body.toString() + '\n}'; } };
 }
 
 function skip() {
@@ -226,12 +305,6 @@ function block(slist) {
     }
 }
 
-function computeVC(prog) {
-  switch (prog){
-  case a:
-  }
-}
-
 function interp() {
   var prog     = eval(document.getElementById("p2input").value);
   var state    = JSON.parse(document.getElementById("State").value);
@@ -246,6 +319,7 @@ function interp() {
 
 function genVC() {
   var prog = eval(document.getElementById("p2input").value);
+  var r = computeVC(prog);
   clearConsole();
   writeToConsole("Just pretty printing for now");
   writeToConsole(prog.toString());
