@@ -319,10 +319,10 @@ function interp() {
 
 function genVC() {
   var prog = eval(document.getElementById("p2input").value);
-  var r = computeVC(prog);
+  var r    = computeVC(prog);
   clearConsole();
   writeToConsole("Just pretty printing for now");
-  writeToConsole(prog.toString());
+  writeToConsole(r.toString());
 }
 
 function writeToConsole(text) {
