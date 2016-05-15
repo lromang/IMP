@@ -1,142 +1,315 @@
-/// <reference path="default.html" />
-/// <reference path="default.html" />
-// JavaScript source code
+// ------------------------------------------
+// | Luis Manuel Roman Garcia | 000117077   |
+// | worked with:             |             |
+// | Andreu Boada Atela       | 000110265   |
+// ------------------------------------------
 
+// Environment variables
+var variables = [];
+var real_variables = [];
+var predQ = tru();
 
-
-////////////////
-// Problem 2
-///////////////
-
-var NUM = "NUM";
+// Expresions
+var NUM   = "NUM";
 var FALSE = "FALSE";
-var VR = "VAR";
-var PLUS = "PLUS";
+var VR    = "VAR";
+var PLUS  = "PLUS";
 var TIMES = "TIMES";
-var LT = "LT";
-var AND = "AND";
-var NOT = "NOT";
+var LT    = "LT";
+var AND   = "AND";
+var NOT   = "NOT";
 
-var SEQ = "SEQ";
-var IFTE = "IFSTMT";
-var WHLE = "WHILESTMT";
-var ASSGN = "ASSGN";
-var SKIP = "SKIP";
+// Statementsnnn
+var SEQ    = "SEQ";
+var IFTE   = "IFSTMT";
+var WHLE   = "WHILESTMT";
+var ASSGN  = "ASSGN";
+var SKIP   = "SKIP";
 var ASSUME = "ASSUME";
 var ASSERT = "ASSERT";
 
-
-
-
-
-function substitute(e, varName, newExp) {
-
-    if (e.type == VR) {
-        if (e.name === varName) {
-            return newExp;
-        } else {
-            return e;
-        }
+// Substitute
+function substitute(e, varName, newExp){
+  switch( e.type ){
+  case VR:
+    if(e.name === varName){
+      return newExp;
+    }else{
+      return e;
     }
-
-
+  case NUM:
+    return e;
+  case FALSE:
+    return flse();
+  case PLUS:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return plus(left, right);
+  case TIMES:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return times(left, right);
+  case LT:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return lt(left, right);
+  case AND:
+    var left  = substitute(e.left, varName, newExp);
+    var right = substitute(e.right, varName, newExp);
+    return and(left, right);
+  case NOT:
+    var left = substitute(e.left, varName, newExp);
+    return not(left);
+  case SEQ:
+    var fst = substitute(e.fst, varName, newExp);
+    var snd = substitute(e.snd, varName, newExp);
+    return seq(fst,snd);
+  default:
+    return e;
+  }
 }
 
-
-function wpc(cmd, predQ) {
-    //predQ is an expression.
-    //cmd is a statement.
-    if (cmd.type == SKIP) {
-        return predQ;
-    }
-    if (cmd.type == ASSERT) {
-        return and(cmd.exp, predQ);
-    }
-
-
+// WPC
+function wpc(cmd, predQ){
+  switch(cmd.type){
+  case SKIP:
+    return predQ;
+  case ASSERT:
+    predQ = and(cmd.exp, predQ);
+    return predQ;
+  case ASSUME:
+    return not(and(cmd.exp, not(predQ)));
+  case SEQ:
+    return wpc(cmd.fst, wpc(cmd.snd, predQ));
+  case ASSGN:
+    return substitute(predQ, cmd.vr, cmd.val);
+  case IFTE:
+    return and(not(and(cmd.cond, wpc(cmd.tcase, predQ))),
+               not(and(not(cmd.cond), wpc(cmd.fcase, predQ))));
+  case WHLE:
+    return computeVC(cmd);
+  default:
+      return predQ;
+  }
 }
 
+// Get_vars
+function get_vars(prog){
+  switch(prog.type){
+  case SEQ:
+    return variables.push(get_vars(prog.fst),
+                  get_vars(prog.snd));
+  case VR:
+    return variables.push(prog.name);
+  case PLUS:
+   return variables.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case TIMES:
+    return variables.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case LT:
+    return variables.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case AND:
+    return variables.push(get_vars(prog.left),
+                  get_vars(prog.right));
+  case NOT:
+    return variables.push(get_vars(prog.left));
+  default:
+    return variables.push();
+  }
+}
 
+// Llenar variables reales y 
+// extrae unicos.
+fill_real = function(){
+for(var j = 0; j < variables.length; j++){
+      if(typeof variables[j] != "number"){
+        real_variables.push(variables[j]);
+      }
+    }
+    real_variables = new Set(real_variables);
+    real_variables = Array.from(real_variables);
+}
 
+// ComputeVC
+function computeVC(prog) {
+  switch (prog.type){
+  case ASSERT:
+    predQ = prog.exp;
+    return wpc(prog, predQ);
+  case IFTE:
+    return wpc(prog, predQ);
+  case SKIP:
+    return wpc(prog, predQ);
+  case ASSUME:
+    return wpc(prog, predQ);
+  case SEQ:
+    return wpc(prog, predQ);
+  case ASSGN:
+    return wpc(prog, predQ);
+  case WHLE:
+    var b = prog.body;
+    var c = prog.cond;
+    var i = prog.inv;
+    get_vars(i);
+    var x          = and(not(and(c, not(computeVC(b, i)))),
+                           not(and(not(c), not(predQ))));
+    var whl_cond   = not(and(i, not(x)));
+    // Get real variables
+    fill_real();
+    var aux_length = real_variables.length;
+    var aux_name   = real_variables.pop();
+    y              = substitute(whl_cond,
+                                  aux_name,
+                                  vr(aux_name + '_'));
+    for(var j = 1; j < aux_length; j++){
+      aux_name = real_variables.pop();
+      y        = substitute(y,
+                            aux_name,
+                            vr(aux_name + '_'));
+    }
+    return and(i, y);
+  default:
+    return prog;
+  }
+}
 
-
+// Interpret expressions
 function interpretExpr(e, state) {
-    if (e.type == NUM) { return e.val; }
-    if (e.type == FALSE) { return false; }
-
-    if (e.type == PLUS) { return interpretExpr(e.left, state) + interpretExpr(e.right, state) }
-
+  switch (e.type){
+   case NUM:
+    return e.val;
+  case FALSE:
+    return false;
+  case VR:
+    return eval('state.' + e.name);
+  case PLUS:
+    return interpretExpr(e.left, state) + interpretExpr(e.right, state);
+  case TIMES:
+    return interpretExpr(e.left, state) * interpretExpr(e.right, state);
+  case LT:
+    return interpretExpr(e.left, state) < interpretExpr(e.right, state);
+  case AND:
+    return interpretExpr(e.left, state) && interpretExpr(e.right, state);
+  case NOT:
+    return !interpretExpr(e.left, state);
+  default:
+    return state;
+  }
 }
 
-
+// Interpret statements
 function interpretStmt(c, state) {
-    if (c.type == SEQ) {
-        var sigmaPP = interpretStmt(c.fst, state);
-        var sigmaP = interpretStmt(c.snd, sigmaPP);
-        return sigmaP;
+  switch (c.type){
+  case SEQ:
+    var sigmaPP = interpretStmt(c.fst, state);
+    var sigmaP  = interpretStmt(c.snd, sigmaPP);
+    return sigmaP;
+  case IFTE:
+    if(interpretExpr(c.cond, state)){
+      return interpretStmt(c.tcase, state);
+    }else{
+      return interpretStmt(c.fcase, state);
     }
+  case WHLE:
+    var sigma     = interpretExpr(c.cond, state);
+    if(sigma){
+      var sigmaP  = interpretStmt(c.body, state);
+      var sigmaPP = interpretStmt(c, sigmaP);
+      return sigmaPP;
+    }
+    return state;
+  case ASSGN:
+    eval("state." + c.vr + "=" + interpretExpr(c.val, state));
+    return state;
+  case SKIP:
+    return state;
+  case ASSUME:
+    return state;
+  case ASSERT:
+    return state;
+  default:
+    return state;
+  }
 }
 
 
 function str(obj) { return JSON.stringify(obj); }
 
 //Constructor definitions for the different AST nodes.
-
+function str(obj) { return JSON.stringify(obj); }
 function flse() {
-    return { type: FALSE, toString: function () { return "false"; } };
+    return { type: FALSE,
+        toString: function () { return "false"; },
+        z3: function () { return "false"; } };
 }
-
 function vr(name) {
-    return { type: VR, name: name, toString: function () { return this.name; } };
+    return { type: VR, name: name,
+        toString: function () { return this.name; },
+        z3: function () { return this.name; } };
 }
 function num(n) {
-    return { type: NUM, val: n, toString: function () { return this.val; } };
+    return { type: NUM, val: n,
+        toString: function () { return this.val; },
+        z3: function () { return this.val; } };
 }
 function plus(x, y) {
-    return { type: PLUS, left: x, right: y, toString: function () { return "(" + this.left.toString() + "+" + this.right.toString() + ")"; } };
+    return { type: PLUS, left: x, right: y,
+        toString: function () { return "(" + this.left.toString() + "+" + this.right.toString() + ")"; },
+        z3: function () { return "(+ " + this.left.z3() + " " + this.right.z3() + ")"; } };
 }
 function times(x, y) {
-    return { type: TIMES, left: x, right: y, toString: function () { return "(" + this.left.toString() + "*" + this.right.toString() + ")"; } };
+    return { type: TIMES, left: x, right: y,
+        toString: function () { return "(" + this.left.toString() + "*" + this.right.toString() + ")"; },
+        z3: function () { return "(* " + this.left.z3() + " " + this.right.z3() + ")"; } };
 }
 function lt(x, y) {
-    return { type: LT, left: x, right: y, toString: function () { return "(" + this.left.toString() + "<" + this.right.toString() + ")"; } };
+    return { type: LT, left: x, right: y,
+        toString: function () { return "(" + this.left.toString() + "<" + this.right.toString() + ")"; },
+        z3: function () { return "(< " + this.left.z3() + " " + this.right.z3() + ")"; } };
 }
 function and(x, y) {
-    return { type: AND, left: x, right: y, toString: function () { return "(" + this.left.toString() + "&&" + this.right.toString() + ")"; } };
+    return { type: AND, left: x, right: y,
+        toString: function () { return "(" + this.left.toString() + "&&" + this.right.toString() + ")"; },
+        z3: function () { return "(and " + this.left.z3() + " " + this.right.z3() + ")"; } };
 }
-
 function not(x) {
-    return { type: NOT, left: x, toString: function () { return "(!" + this.left.toString() + ")"; } };
+    return { type: NOT, left: x,
+        toString: function () { return "(!" + this.left.toString() + ")"; },
+        z3: function () { return "(not " + this.left.z3() + ")"; } };
 }
-
-
 function seq(s1, s2) {
-    return { type: SEQ, fst: s1, snd: s2, toString: function () { return "" + this.fst.toString() + ";\n" + this.snd.toString(); } };
+    return { type: SEQ, fst: s1, snd: s2,
+        toString: function () { return "" + this.fst.toString() + ";\n" + this.snd.toString(); },
+        z3: function () { return this.fst.z3() + "\n" + this.snd.z3(); } };
 }
-
-
 function assume(e) {
-    return { type: ASSUME, exp: e, toString: function () { return "assume " + this.exp.toString(); } };
+    return { type: ASSUME, exp: e,
+        toString: function () { return "assume " + this.exp.toString(); },
+        z3: function () { return "(asumme" + this.exp.z3() + ")"; } };
 }
-
 function assert(e) {
-    return { type: ASSERT, exp: e, toString: function () { return "assert " + this.exp.toString(); } };
+    return { type: ASSERT, exp: e,
+        toString: function () { return "assert " + this.exp.toString(); },
+        z3: function () { return "(assert " + this.exp.z3() + ")"; } };
 }
-
 function assgn(v, val) {
-    return { type: ASSGN, vr: v, val: val, toString: function () { return "" + this.vr + ":=" + this.val.toString(); } };
+    return { type: ASSGN, vr: v, val: val,
+        toString: function () { return "" + this.vr + ":=" + this.val.toString(); }};
 }
-
 function ifte(c, t, f) {
-    return { type: IFTE, cond: c, tcase: t, fcase: f, toString: function () { return "if(" + this.cond.toString() + "){\n" + this.tcase.toString() + '\n}else{\n' + this.fcase.toString() + '\n}'; } };
+    return { type: IFTE, cond: c, tcase: t, fcase: f,
+        toString: function () { return "if(" + this.cond.toString() + "){\n" + this.tcase.toString() + '\n}else{\n' + this.fcase.toString() + '\n}'; },
+        z3: function () { return "(ite " + this.cond.z3() + "){\n" + this.tcase.z3() + '\n}else{\n' + this.fcase.z3() + '\n}';} };
 }
-
-function whle(c, b) {
-    return { type: WHLE, cond: c, body: b, toString: function () { return "while(" + this.cond.toString() + "){\n" + this.body.toString() + '\n}'; } };
+function whle(c, b, i) {
+    return { type: WHLE, cond: c, body: b, inv: i,
+        toString: function () { return "while(" + this.cond.toString() + "){\n" + this.body.toString() + '\n}'; } };
 }
-
 function skip() {
-    return { type: SKIP, toString: function () { return "/*skip*/"; } };
+    return { type: SKIP,
+        toString: function () { return "/*skip*/"; } };
 }
 
 //some useful helpers:
@@ -147,6 +320,10 @@ function eq(x, y) {
 
 function tru() {
     return not(flse());
+}
+
+function minus(x, y) {
+    return plus(x,times(num(-1),y))
 }
 
 function block(slist) {
@@ -160,42 +337,41 @@ function block(slist) {
     }
 }
 
-//The stuff you have to implement.
-
-function computeVC(prog) {
-    //Compute the verification condition for the program leaving some kind of place holder for loop invariants.
-}
-
-
-
-
 function interp() {
-    var prog = eval(document.getElementById("p2input").value);
-    var state = JSON.parse(document.getElementById("State").value);
-    clearConsole();
-    writeToConsole("Just pretty printing for now");
-    writeToConsole(prog.toString());
+  var prog     = eval(document.getElementById("p2input").value);
+  var state    = JSON.parse(document.getElementById("State").value);
+  var currLine = prog.toString();
+  clearConsole();
+  writeToConsole(currLine);
+  interpretStmt(prog, state);
+  writeToConsole("\nESTADO:\n");
+  writeToConsole(JSON.stringify(state));
 }
-
 
 function genVC() {
-    var prog = eval(document.getElementById("p2input").value);
-    clearConsole();
-    writeToConsole("Just pretty printing for now");
-    writeToConsole(prog.toString());
-    var mywpc = wpc(prog, tru);
-    writeToConsole(mywpc.toString());
+  var prog = eval(document.getElementById("p2input").value);
+  predQ = tru();
+  var r    = computeVC(prog);
+  clearConsole();
+  var dec_vars = '';
+  while(variables.length > 0){
+    variables.pop();
+  }
+  get_vars(r);
+  fill_real();
+  for(var j = 0; j < real_variables.length; j++){
+    dec_vars = dec_vars + "(declare-const " + real_variables[j] + " Int)\n";
+  }
+  var aux = dec_vars + '(assert (not'+ r.z3() + '))\n' + '(check-sat)';
+  writeToConsole(aux);
 }
-
-
-
 
 function writeToConsole(text) {
     var csl = document.getElementById("console");
     if (typeof text == "string") {
         csl.textContent += text + "\n";
     } else {
-        csl.textContent += text.toString() + "\n";
+        csl.textContent += text.z3() + "\n";
     }
 }
 

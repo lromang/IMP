@@ -326,7 +326,12 @@ function genVC() {
   var prog = eval(document.getElementById("p2input").value);
   var r    = computeVC(prog);
   clearConsole();
-  var aux = '(assert (not'+ r.z3() + '))\n' + '(check-sat)';
+  var vars = get_vars(prog);
+  var dec_vars = [];
+  for(var i = 0; i < vars.length; i++){
+    dec_vars.push("(declare-const " + vars[i] + "Int)\n");
+  }
+  var aux = dec_vars + '(assert (not'+ r.z3() + '))\n' + '(check-sat)';
   writeToConsole(aux);
 }
 

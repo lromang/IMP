@@ -16,7 +16,7 @@ var LT    = "LT";
 var AND   = "AND";
 var NOT   = "NOT";
 
-// Statementsnnn
+// Statements
 var SEQ    = "SEQ";
 var IFTE   = "IFSTMT";
 var WHLE   = "WHILESTMT";
